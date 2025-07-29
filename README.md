@@ -82,7 +82,7 @@ cd ../server
 npm install
 
 
-3. Setup .env file for server
+### 3. Setup .env file for server
 Create a .env file inside /server:
 
 PORT=5000
@@ -93,7 +93,7 @@ DB_PASSWORD=your_password
 DB_NAME=employee_db
 
 
-4. Run both servers
+### 4. Run both servers
 #### Run backend
 cd server
 npm run dev
