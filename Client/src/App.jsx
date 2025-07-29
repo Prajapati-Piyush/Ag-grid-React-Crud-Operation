@@ -1,323 +1,253 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { AgGridReact } from "ag-grid-react";
 import "ag-grid-community/styles/ag-theme-quartz.css";
 import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
-import { Plus, Edit, Trash, Save, XCircle } from "lucide-react";
+import { Plus } from "lucide-react";
+import axios from "axios";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-const initialRowData = [
-  { make: "Tesla", model: "Model Y", price: 64950, electric: true },
-  { make: "Ford", model: "F-series", price: 33850, electric: false },
-  { make: "Toyota", model: "Corolla", price: 29600, electric: false },
-  { make: "Chevrolet", model: "Silverado", price: 40850, electric: false },
-  { make: "BMW", model: "i4", price: 52300, electric: true },
-];
-
-const MAKES = ["Tesla", "Ford", "Toyota", "Chevrolet", "BMW"];
-
 const App = () => {
-  const [rowData, setRowData] = useState(
-    initialRowData.map((row, i) => ({
-      ...row,
-      _id: `${Date.now()}-${i}-${Math.random()}`,
-    }))
-  );
-  const [editingId, setEditingId] = useState(null);
-  const [editCache, setEditCache] = useState({});
-  const [newRow, setNewRow] = useState({
-    make: "",
-    model: "",
-    price: "",
-    electric: false,
+  const [rowData, setRowData] = useState([]);
+  const [editRowId, setEditRowId] = useState(null);
+  const [filterValue, setFilterValue] = useState("");
+  const [newEmployee, setNewEmployee] = useState({
+    name: "",
+    email: "",
+    department: ""
   });
 
-  // Columns: all cellRenderers are controlled by `editingId`
-  const colDefs = [
-    {
-      headerName: "Make",
-      field: "make",
-      cellRenderer: params =>
-        editingId === params.data._id ? (
-          <select
-            className="border rounded px-2 py-1 w-full"
-            value={editCache.make}
-            onChange={e =>
-              setEditCache(ec => ({ ...ec, make: e.target.value }))
-            }
-          >
-            {MAKES.map(make => (
-              <option key={make} value={make}>{make}</option>
-            ))}
-          </select>
+  const gridRef = useRef();
+
+  const fetchEmployees = async () => {
+    try {
+      const result = await axios.get("http://localhost:3000/employees");
+      setRowData(result.data);
+    } catch (error) {
+      console.error("Error fetching employees:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
+
+  const handleAddEmployee = async () => {
+    const { name, email, department } = newEmployee;
+    if (!name || !email || !department) return;
+
+    try {
+      await axios.post("http://localhost:3000/employees", newEmployee);
+      setNewEmployee({ name: "", email: "", department: "" });
+      fetchEmployees();
+    } catch (error) {
+      console.error("Error adding employee:", error);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this employee?");
+    if (!confirmDelete) return;
+
+    try {
+      await axios.delete(`http://localhost:3000/employees/${id}`);
+      alert("Employee deleted successfully");
+      fetchEmployees();
+    } catch (error) {
+      console.error("Error deleting employee:", error);
+    }
+  };
+
+  const handleSave = async (data) => {
+    try {
+      await axios.put(`http://localhost:3000/employees/${data.id}`, data);
+      setEditRowId(null);
+      fetchEmployees();
+    } catch (error) {
+      console.error("Error updating employee:", error);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditRowId(null);
+    fetchEmployees();
+  };
+
+  const handleNameFilterChange = (e) => {
+    const value = e.target.value;
+    setFilterValue(value);
+
+    if (gridRef.current && gridRef.current.api) {
+      const filterModel =
+        value.trim() === ""
+          ? null // 🔥 This clears the filter
+          : {
+            name: {
+              type: "contains",
+              filter: value,
+            },
+          };
+
+      gridRef.current.api.setFilterModel(filterModel);
+      gridRef.current.api.onFilterChanged();
+    }
+  };
+
+  const ActionButton = (props) => {
+    const { data } = props;
+    const isEditing = data.id === editRowId;
+
+    return (
+      <div className="flex gap-2 justify-center">
+        {isEditing ? (
+          <>
+            <button
+              className="bg-green-600 text-white px-2 py-1 rounded text-sm"
+              onClick={() => handleSave(data)}
+            >
+              Save
+            </button>
+            <button
+              className="bg-gray-500 text-white px-2 py-1 rounded text-sm"
+              onClick={handleCancel}
+            >
+              Cancel
+            </button>
+          </>
         ) : (
-          params.value
-        ),
+          <>
+            <button
+              className="bg-blue-500 text-white px-2 py-1 rounded text-sm"
+              onClick={() => setEditRowId(data.id)}
+            >
+              Update
+            </button>
+            <button
+              className="bg-red-500 text-white px-2 py-1 rounded text-sm"
+              onClick={() => handleDelete(data.id)}
+            >
+              Delete
+            </button>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  const columnDefs = [
+    { headerName: "ID", field: "id", sortable: true, width: 80 },
+    {
+      headerName: "Name",
+      field: "name",
+      editable: (params) => params.data.id === editRowId
     },
     {
-      headerName: "Model",
-      field: "model",
-      cellRenderer: params =>
-        editingId === params.data._id ? (
-          <input
-            className="border rounded px-2 py-1 w-full"
-            value={editCache.model}
-            onChange={e =>
-              setEditCache(ec => ({ ...ec, model: e.target.value }))
-            }
-          />
-        ) : (
-          params.value
-        ),
+      headerName: "Email",
+      field: "email",
+      editable: (params) => params.data.id === editRowId
     },
     {
-      headerName: "Price",
-      field: "price",
-      cellRenderer: params =>
-        editingId === params.data._id ? (
-          <input
-            className="border rounded px-2 py-1 w-full"
-            type="number"
-            value={editCache.price}
-            onChange={e =>
-              setEditCache(ec => ({
-                ...ec,
-                price: e.target.value,
-              }))
-            }
-          />
-        ) : (
-          "$" + Number(params.value || 0).toLocaleString()
-        ),
+      headerName: "Department",
+      field: "department",
+      editable: (params) => params.data.id === editRowId
     },
     {
-      headerName: "Electric",
-      field: "electric",
-      cellRenderer: params =>
-        editingId === params.data._id ? (
-          <select
-            className="border rounded px-2 py-1 w-full"
-            value={editCache.electric ? "true" : "false"}
-            onChange={e =>
-              setEditCache(ec => ({
-                ...ec,
-                electric: e.target.value === "true",
-              }))
-            }
-          >
-            <option value="true">Yes</option>
-            <option value="false">No</option>
-          </select>
-        ) : params.value ? (
-          <span className="text-green-600 font-bold">Yes</span>
-        ) : (
-          <span className="text-gray-600">No</span>
-        ),
+      headerName: "Created At",
+      field: "created_at",
+      valueFormatter: (params) => {
+        if (!params.value) return "";
+        const date = new Date(params.value);
+        return date.toLocaleString();
+      }
     },
     {
       headerName: "Actions",
       field: "actions",
-      pinned: "right",
-      cellRenderer: params => {
-        const isEditing = editingId === params.data._id;
-        return isEditing ? (
-          <div className="flex gap-2">
-            <button
-              className="p-1 bg-green-100 rounded hover:bg-green-300"
-              title="Save"
-              onClick={() => handleSave(params.data._id)}
-            >
-              <Save size={18} />
-            </button>
-            <button
-              className="p-1 bg-red-100 rounded hover:bg-red-300"
-              title="Cancel"
-              onClick={handleCancelEdit}
-            >
-              <XCircle size={18} />
-            </button>
-          </div>
-        ) : (
-          <div className="flex gap-2">
-            <button
-              className="p-1 bg-blue-100 rounded hover:bg-blue-300"
-              title="Edit"
-              onClick={() => handleEdit(params.data)}
-            >
-              <Edit size={18} />
-            </button>
-            <button
-              className="p-1 bg-red-100 rounded hover:bg-red-300"
-              title="Delete"
-              onClick={() => handleDelete(params.data._id)}
-            >
-              <Trash size={18} />
-            </button>
-          </div>
-        );
-      },
-      editable: false,
-      sortable: false,
-      filter: false,
-      width: 120,
-    },
+      cellRenderer: ActionButton,
+      cellStyle: { display: "flex", justifyContent: "center", alignItems: "center" },
+      editable: false
+    }
   ];
 
-  const defaultColDef = useMemo(
-    () => ({
+  const defaultColDef = useMemo(() => {
+    return {
       flex: 1,
       filter: true,
       floatingFilter: true,
-      editable: false,
-      resizable: true,
-    }),
-    []
-  );
-
-  // Edit handler
-  function handleEdit(data) {
-    setEditingId(data._id);
-    setEditCache({ ...data });
-  }
-
-  // Save handler
-  function handleSave(id) {
-    setRowData(prev =>
-      prev.map(row =>
-        row._id === id
-          ? {
-              ...editCache,
-              price: Number(editCache.price),
-            }
-          : row
-      )
-    );
-    setEditingId(null);
-    setEditCache({});
-  }
-
-  // Cancel handler
-  function handleCancelEdit() {
-    setEditingId(null);
-    setEditCache({});
-  }
-
-  // Delete handler
-  function handleDelete(id) {
-    if (window.confirm("Delete this row?")) {
-      setRowData(prev => prev.filter(row => row._id !== id));
-      setEditingId(null);
-      setEditCache({});
-    }
-  }
-
-  // Add new row
-  function handleAddRow() {
-    if (
-      !newRow.make ||
-      !newRow.model ||
-      !newRow.price ||
-      newRow.electric === ""
-    ) {
-      window.alert("Please fill all fields before adding.");
-      return;
-    }
-    const id = `${Date.now()}-${Math.random()}`;
-    setRowData(prev => [
-      ...prev,
-      {
-        ...newRow,
-        price: Number(newRow.price),
-        electric: newRow.electric === "true" || newRow.electric === true,
-        _id: id,
-      },
-    ]);
-    setNewRow({
-      make: "",
-      model: "",
-      price: "",
-      electric: false,
-    });
-  }
-
-  // Add row form
-  function renderAddRowForm() {
-    return (
-      <div className="flex gap-4 items-end mb-4">
-        <select
-          className="border rounded px-2 py-1"
-          value={newRow.make}
-          onChange={e => setNewRow(r => ({ ...r, make: e.target.value }))}
-        >
-          <option value="">Make</option>
-          {MAKES.map(make => (
-            <option key={make} value={make}>
-              {make}
-            </option>
-          ))}
-        </select>
-        <input
-          className="border rounded px-2 py-1"
-          type="text"
-          placeholder="Model"
-          value={newRow.model}
-          onChange={e => setNewRow(r => ({ ...r, model: e.target.value }))}
-        />
-        <input
-          className="border rounded px-2 py-1"
-          type="number"
-          placeholder="Price"
-          value={newRow.price}
-          onChange={e => setNewRow(r => ({ ...r, price: e.target.value }))}
-        />
-        <select
-          className="border rounded px-2 py-1"
-          value={newRow.electric}
-          onChange={e =>
-            setNewRow(r => ({
-              ...r,
-              electric: e.target.value === "true",
-            }))
-          }
-        >
-          <option value={false}>Not Electric</option>
-          <option value={true}>Electric</option>
-        </select>
-        <button
-          className="p-2 bg-green-600 text-white rounded hover:bg-green-800 flex items-center gap-1"
-          onClick={handleAddRow}
-          title="Add row"
-        >
-          <Plus size={18} /> Add
-        </button>
-      </div>
-    );
-  }
+      resizable: true
+    };
+  }, []);
 
   return (
-    <div className="space-y-10 mx-auto">
-      <h1 className="text-center text-3xl mt-10 text-gray-900 font-bold">
-        React Ag Grid CRUD (Edit, Add, Delete Working)
+    <div className="p-4">
+      <h1 className="text-2xl font-bold text-center mb-6">
+        Employee Management using AG Grid
       </h1>
-      <div className="flex justify-center items-center min-h-[500px]">
-        <div className="w-[80%]">
-          {renderAddRowForm()}
-          <div className="ag-theme-quartz" style={{ height: 500 }}>
-            <AgGridReact
-              rowData={rowData}
-              columnDefs={colDefs}
-              defaultColDef={defaultColDef}
-              pagination={true}
-              paginationPageSize={5}
-              paginationPageSizeSelector={[5, 10]}
-              rowSelection={{
-                mode: "multiRow",
-                checkboxes: true,
-              }}
-              stopEditingWhenCellsLoseFocus={true}
-              suppressClickEdit={true}
+
+      <div className="max-w-6xl mx-auto bg-white p-6 rounded-lg shadow-md space-y-6">
+        {/* Employee Form */}
+        <div className="flex flex-wrap gap-4 justify-between items-end">
+          <div className="flex flex-col w-[200px]">
+            <label className="text-sm font-medium text-gray-700">Name</label>
+            <input
+              type="text"
+              placeholder="John Doe"
+              value={newEmployee.name}
+              onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })}
+              className="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
+
+          <div className="flex flex-col w-[240px]">
+            <label className="text-sm font-medium text-gray-700">Email</label>
+            <input
+              type="email"
+              placeholder="john@example.com"
+              value={newEmployee.email}
+              onChange={(e) => setNewEmployee({ ...newEmployee, email: e.target.value })}
+              className="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="flex flex-col w-[200px]">
+            <label className="text-sm font-medium text-gray-700">Department</label>
+            <input
+              type="text"
+              placeholder="Engineering"
+              value={newEmployee.department}
+              onChange={(e) => setNewEmployee({ ...newEmployee, department: e.target.value })}
+              className="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <button
+            onClick={handleAddEmployee}
+            className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2 rounded-md hover:bg-blue-700 transition"
+          >
+            <Plus size={18} /> Add
+          </button>
+        </div>
+
+        {/* External Filter */}
+        <div className="flex items-center gap-4">
+          <label className="text-sm font-medium text-gray-700">Filter by Name:</label>
+          <input
+            type="text"
+            placeholder="Search name..."
+            onChange={handleNameFilterChange}
+            className="border rounded px-3 py-2 w-[240px] focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        {/* AG Grid */}
+        <div className="ag-theme-quartz w-full h-[500px] rounded shadow-md">
+          <AgGridReact
+            ref={gridRef}
+            rowData={rowData}
+            columnDefs={columnDefs}
+            defaultColDef={defaultColDef}
+            stopEditingWhenCellsLoseFocus={true}
+          />
         </div>
       </div>
     </div>
