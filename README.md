@@ -73,11 +73,11 @@ cd employee-management-system
 
 
 ### 2. Install dependencies
-# For frontend
+#### For frontend
 cd client
 npm install
 
-# For backend
+#### For backend
 cd ../server
 npm install
 
@@ -94,10 +94,10 @@ DB_NAME=employee_db
 
 
 4. Run both servers
-# Run backend
+#### Run backend
 cd server
 npm run dev
 
-# Run frontend
+#### Run frontend
 cd ../client
 npm start
