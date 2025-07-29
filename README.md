@@ -47,8 +47,10 @@ A full-stack Employee Management System built using **React**, **AG Grid**, **No
 
 | Feature | Preview |
 |--------|--------|
-| Employee Grid | ![Employee Grid](screenshots/grid.png) |
-| Add/Edit Modal | ![Form Modal](screenshots/form.png) |
+| Employee Grid | ![Employee Grid]<img width="1588" height="887" alt="image" src="https://github.com/user-attachments/assets/6871cdec-0216-479c-b57c-9c495601e890" />
+ |
+| Add/Edit Modal | ![Form Modal](<img width="1428" height="122" alt="image" src="https://github.com/user-attachments/assets/bbc83d01-2457-4618-bd5e-d507df75d9da" />
+ |
 
 > Screenshots are stored in the `/screenshots` folder.
 
