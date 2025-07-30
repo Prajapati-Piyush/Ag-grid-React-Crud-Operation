@@ -8,6 +8,7 @@ import axios from "axios";
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 const App = () => {
+  const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
   const [rowData, setRowData] = useState([]);
   const [editRowId, setEditRowId] = useState(null);
   const [filterValue, setFilterValue] = useState("");
@@ -21,7 +22,7 @@ const App = () => {
 
   const fetchEmployees = async () => {
     try {
-      const result = await axios.get("http://localhost:3000/employees");
+      const result = await axios.get(`${BASE_URL}/employees`);
       setRowData(result.data);
     } catch (error) {
       console.error("Error fetching employees:", error);
@@ -37,7 +38,7 @@ const App = () => {
     if (!name || !email || !department) return;
 
     try {
-      await axios.post("http://localhost:3000/employees", newEmployee);
+      await axios.post(`${BASE_URL}/employees`, newEmployee);
       setNewEmployee({ name: "", email: "", department: "" });
       fetchEmployees();
     } catch (error) {
@@ -50,7 +51,7 @@ const App = () => {
     if (!confirmDelete) return;
 
     try {
-      await axios.delete(`http://localhost:3000/employees/${id}`);
+      await axios.delete(`${BASE_URL}/employees/${id}`);
       alert("Employee deleted successfully");
       fetchEmployees();
     } catch (error) {
@@ -60,7 +61,7 @@ const App = () => {
 
   const handleSave = async (data) => {
     try {
-      await axios.put(`http://localhost:3000/employees/${data.id}`, data);
+      await axios.put(`${BASE_URL}/employees/${data.id}`, data);
       setEditRowId(null);
       fetchEmployees();
     } catch (error) {

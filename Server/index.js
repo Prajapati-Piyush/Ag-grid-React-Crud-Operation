@@ -9,7 +9,7 @@ dotenv.config();
 
 app.use(urlencoded({ extended: true }));
 app.use(cors({
-    origin: "http://localhost:5173",
+    origin: ["https://emp-management-eight.vercel.app","http://localhost:5173"]
 }));
 app.use(express.json());
 
